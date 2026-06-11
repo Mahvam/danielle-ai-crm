@@ -481,6 +481,30 @@ class Setting(db.Model):
         return row.value if row else default
 
     @staticmethod
+    def resolve(key, default=""):
+        """Resolve a secret/config value from the environment first (the
+        platform var, e.g. Railway, is authoritative), then fall back to the
+        value saved in the DB. Always whitespace-stripped.
+
+        Reading the DB live each call fixes two production problems:
+        - multi-worker gunicorn where a key saved via the Settings UI after
+          boot only reached one worker's os.environ, and
+        - a trailing newline/space in the key that would otherwise be sent as
+          a malformed "Authorization: Bearer" header (OpenRouter 401
+          "Missing Authentication header").
+        """
+        import os
+        val = (os.environ.get(key) or "").strip()
+        if val:
+            return val
+        try:
+            row = Setting.query.get(key)
+            db_val = (row.value if row else "") or ""
+        except Exception:
+            db_val = ""
+        return db_val.strip() or default
+
+    @staticmethod
     def set(key, value):
         row = Setting.query.get(key)
         if row:

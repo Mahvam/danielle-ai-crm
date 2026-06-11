@@ -99,9 +99,13 @@ IMPORTANT RULES:
 
 def call_openrouter(messages, model=FLASH_MODEL):
     """Call OpenRouter API."""
-    api_key = os.getenv("OPENROUTER_API_KEY", "")
+    # Resolve from env first, then the DB-saved setting (and strip whitespace).
+    # Reading the DB live means a key saved via Settings works without a
+    # restart, even across multiple gunicorn workers.
+    from models import Setting
+    api_key = Setting.resolve("OPENROUTER_API_KEY")
     if not api_key:
-        return {"error": "OpenRouter API key not configured. Add OPENROUTER_API_KEY to your environment variables."}
+        return {"error": "OpenRouter API key not configured. Add OPENROUTER_API_KEY in Settings or your environment variables."}
 
     try:
         response = requests.post(

@@ -47,9 +47,13 @@ def get_ai_client():
     "sk-or-" is routed through OpenRouter regardless of CHAT_PROVIDER, and we
     fall back to whichever key is actually set.
     """
+    # Resolve keys from env first, then the DB-saved Settings (whitespace
+    # stripped). This makes a key entered in the Settings UI work immediately,
+    # even across multiple gunicorn workers, without a restart.
+    from models import Setting
     provider = os.getenv("CHAT_PROVIDER", "openai")
-    openai_key = os.getenv("OPENAI_API_KEY", "").strip()
-    openrouter_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+    openai_key = Setting.resolve("OPENAI_API_KEY")
+    openrouter_key = Setting.resolve("OPENROUTER_API_KEY")
 
     if provider == "openai":
         # An OpenRouter key pasted into the OpenAI field — route it correctly.
